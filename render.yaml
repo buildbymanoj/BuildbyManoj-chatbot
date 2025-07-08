@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: chatbot
+    env: python
+    buildCommand: ""
+    startCommand: gunicorn app1:app
+    plan: free
+    autoDeploy: true

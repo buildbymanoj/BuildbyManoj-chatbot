@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuildbyManoj Chatbot</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Add Markdown rendering library -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="chat-container">
+    <header>
+      <h1><i class="fas fa-robot"></i>BuildbyManoj Chatbot</h1>
+      <div class="model-info">Smart Web Search Enabled</div>
+    </header>
+    
+    <div id="chatLog" class="chat-messages"></div>
+    
+    <div class="input-area">
+      <input id="userInput" placeholder="Type your message..." autocomplete="off" />
+      <button onclick="sendMessage()" id="sendBtn">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const userInput = document.getElementById("userInput");
+    const chatLog = document.getElementById("chatLog");
+    const sendBtn = document.getElementById("sendBtn");
+
+    // Configure marked.js to sanitize HTML (for security)
+    marked.setOptions({
+      breaks: true,
+      sanitize: true
+    });
+
+    // Send message when Enter is pressed
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      const msg = userInput.value.trim();
+      if (!msg) return;
+
+      // Add user message
+      addMessage(msg, "user");
+      userInput.value = "";
+      
+      // Disable input while waiting
+      userInput.disabled = true;
+      sendBtn.disabled = true;
+      
+      // Show typing indicator
+      addTypingIndicator();
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: msg })
+        });
+        
+        const data = await res.json();
+        // Render markdown in the bot's response
+        const renderedMessage = marked.parse(data.reply);
+        addMessage(renderedMessage, "bot");
+      } catch (error) {
+        addMessage("Sorry, there was an error processing your request.", "bot");
+        console.error("Error:", error);
+      } finally {
+        // Remove typing indicator and re-enable input
+        removeTypingIndicator();
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        userInput.focus();
+      }
+    }
+
+    function addMessage(content, sender) {
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${sender}-message`;
+      
+      const prefix = sender === "user" ? "You" : "DeepSeek";
+      messageDiv.innerHTML = `
+        <div class="message-header">
+          <span class="sender">${prefix}</span>
+          <span class="time">${getCurrentTime()}</span>
+        </div>
+        <div class="message-content">${sender === "bot" ? content : content.replace(/\n/g, '<br>')}</div>
+      `;
+      
+      chatLog.appendChild(messageDiv);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function addTypingIndicator() {
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "message bot-message typing-indicator";
+      typingDiv.id = "typingIndicator";
+      typingDiv.innerHTML = `
+        <div class="message-header">
+          <span class="sender">DeepSeek</span>
+        </div>
+        <div class="message-content">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      `;
+      chatLog.appendChild(typingDiv);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      const typing = document.getElementById("typingIndicator");
+      if (typing) typing.remove();
+    }
+
+    function getCurrentTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  </script>
+</body>
+</html>
